@@ -1,0 +1,29 @@
+ingestion:
+  youtube:
+    page_size: 25
+    max_pages: 1
+    order: time
+
+nlp:
+  spacy_model: pt_core_news_sm
+
+thresholds:
+  similarity: 0.55
+  rule_weight: 0.6
+  semantic_weight: 0.6
+  decision: 0.9
+
+services:
+  vocab_url: http://localhost:8001/v1/vocab
+  perspective_enabled: false
+  perspective_weight: 0.4
+
+storage:
+  mongo_url: mongodb://localhost:27017
+  db: bigdata_mvp
+  collection: comments_analysis
+
+storage:
+  provider: firestore
+  ttl_days: 1
+

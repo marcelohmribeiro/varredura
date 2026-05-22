@@ -1,0 +1,36 @@
+{
+  "keywords_explicit": [
+    "sexualização",
+    "hipersexualização",
+    "grooming",
+    "pedofilia",
+    "exploração infantil",
+    "abuso infantil",
+    "loli",
+    "tween",
+    "novinha",
+    "ninfeta",
+    "lolita",
+    "jailbait",
+    "underage",
+    "pthc",
+    "baby face",
+    "corpo de mulher"
+  ],
+  "examples_implicit": [
+    "parece mais nova do que é",
+    "tem carinha de bebê",
+    "nem parece que já tem idade",
+    "tão novinha mas",
+    "acabou de virar mulher",
+    "na flor da idade",
+    "mal saiu da escola",
+    "essa aí vai dar trabalho",
+    "cresceu rápido demais",
+    "ainda brinca de boneca"
+  ],
+  "regex_patterns": {
+    "age_10_17": "\\b(1[0-7])\\s?(anos|aninhos)\\b"
+  },
+  "version": "v0-mvp"
+}

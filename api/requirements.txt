@@ -1,0 +1,17 @@
+google-api-python-client
+nltk
+spacy
+sentence-transformers
+pymongo
+requests
+pydantic>=2
+fastapi
+uvicorn
+python-dotenv
+PyYAML
+praw>=7.7
+pandas
+snscrape
+youtube-comment-downloader
+selenium
+webdriver-manager
