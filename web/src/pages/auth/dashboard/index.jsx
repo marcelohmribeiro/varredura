@@ -30,16 +30,48 @@ function StatCard({ icon: Icon, label, value, color }) {
 function ScrapeModal({ onClose, onDone }) {
   const [source, setSource] = useState('youtube')
   const [identifier, setIdentifier] = useState('')
+  const [twitterMode, setTwitterMode] = useState('post')
+  const [instagramMode, setInstagramMode] = useState('post')
   const [jobId, setJobId] = useState(null)
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const identifierLabel = source === 'youtube'
+    ? 'ID do vídeo'
+    : source === 'reddit'
+    ? 'ID do post Reddit'
+    : source === 'twitter'
+    ? (twitterMode === 'post' ? 'URL do tweet' : twitterMode === 'profile' ? 'Username (sem @)' : 'Hashtag (sem #)')
+    : source === 'instagram'
+    ? `ID do ${instagramMode}`
+    : 'Identificador'
+
+  const identifierPlaceholder = source === 'youtube'
+    ? 'ex: dQw4w9WgXcQ'
+    : source === 'reddit'
+    ? 'ex: abc123'
+    : source === 'twitter'
+    ? (twitterMode === 'post' ? 'ex: https://twitter.com/user/status/123' : twitterMode === 'profile' ? 'ex: elonmusk' : 'ex: brasil')
+    : source === 'instagram'
+    ? (instagramMode === 'reel' ? 'ex: C1a2b3c4d5e' : 'ex: C1a2b3c4d5e')
+    : ''
+
+  const buildOptions = () => {
+    if (source === 'twitter') return { twitter_mode: twitterMode }
+    if (source === 'instagram') return { instagram_mode: instagramMode }
+    return {}
+  }
+
   const start = async () => {
     setError(null)
     setLoading(true)
     try {
-      const res = await triggerScrape({ source, identifier: identifier || undefined })
+      const res = await triggerScrape({
+        source,
+        identifier: identifier || undefined,
+        options: buildOptions(),
+      })
       setJobId(res.job_id)
       setStatus(res.status)
     } catch (e) {
@@ -62,6 +94,8 @@ function ScrapeModal({ onClose, onDone }) {
     return () => clearInterval(interval)
   }, [jobId, status, onDone])
 
+  const needsIdentifier = source !== 'reddit_auto'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <Card className="w-full max-w-md mx-4">
@@ -79,16 +113,45 @@ function ScrapeModal({ onClose, onDone }) {
               <option value="youtube">YouTube</option>
               <option value="reddit">Reddit (post específico)</option>
               <option value="reddit_auto">Reddit (busca automática)</option>
+              <option value="twitter">Twitter</option>
+              <option value="instagram">Instagram</option>
             </select>
           </div>
 
-          {source !== 'reddit_auto' && (
+          {source === 'twitter' && (
             <div className="space-y-1">
-              <label className="text-sm font-medium">
-                {source === 'youtube' ? 'ID do vídeo' : 'ID do post Reddit'}
-              </label>
+              <label className="text-sm font-medium">Modo</label>
+              <select
+                value={twitterMode}
+                onChange={(e) => setTwitterMode(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="post">Post (URL completa)</option>
+                <option value="profile">Perfil (username)</option>
+                <option value="hashtag">Hashtag</option>
+              </select>
+            </div>
+          )}
+
+          {source === 'instagram' && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Modo</label>
+              <select
+                value={instagramMode}
+                onChange={(e) => setInstagramMode(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="post">Post (ID)</option>
+                <option value="reel">Reel (ID)</option>
+              </select>
+            </div>
+          )}
+
+          {needsIdentifier && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{identifierLabel}</label>
               <Input
-                placeholder={source === 'youtube' ? 'ex: dQw4w9WgXcQ' : 'ex: abc123'}
+                placeholder={identifierPlaceholder}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
@@ -177,6 +240,8 @@ export default function Dashboard() {
           <option value="">Todas as plataformas</option>
           <option value="youtube">YouTube</option>
           <option value="reddit">Reddit</option>
+          <option value="twitter">Twitter</option>
+          <option value="instagram">Instagram</option>
         </select>
 
         <select

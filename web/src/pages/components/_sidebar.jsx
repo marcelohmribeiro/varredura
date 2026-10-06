@@ -3,6 +3,7 @@ import { cn } from 'src/lib/utils'
 import { Settings, ChevronLeft } from 'lucide-react'
 import { Button } from 'src/components/ui/button'
 import { navigation } from 'src/constants'
+import icone from 'src/assets/icone.png'
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
 	const location = useLocation()
@@ -13,10 +14,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
 			<div className='flex h-16 items-center justify-between border-b px-4'>
 				{!collapsed && (
 					<div className='flex items-center gap-2'>
-						<img src="" alt='Logo' className='h-8 w-8 rounded-md' />
+						<img src={icone} alt='Logo' className='h-8 w-8 rounded-md' />
 						<div className='flex flex-col'>
-							<span className='text-sm font-semibold'>AlertaSeguranca</span>
-							<span className='text-xs text-muted-foreground'>...</span>
+							<span className='text-sm font-semibold'>Varredura</span>
 						</div>
 					</div>
 				)}

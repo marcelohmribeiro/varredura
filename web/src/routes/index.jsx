@@ -4,6 +4,8 @@ import Authlayout from "src/pages/auth/layout";
 import Index from "src/pages";
 import Login from "src/pages/(public)/login";
 import Dashboard from "src/pages/auth/dashboard";
+import Scraping from "src/pages/auth/scrapping";
+import Configuracoes from "src/pages/auth/configuracoes";
 
 export const router = createBrowserRouter([
   {
@@ -24,8 +26,12 @@ export const router = createBrowserRouter([
             element: <Dashboard />,
           },
           {
+            path: 'scraping',
+            element: <Scraping />,
+          },
+          {
             path: 'configuracoes',
-            element: <h1>Configurações</h1>,
+            element: <Configuracoes />,
           }
         ]
       }

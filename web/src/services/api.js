@@ -30,3 +30,12 @@ export const triggerScrape = (body) =>
 
 export const getScrapeStatus = (jobId) =>
   fetchApi(`/scrape/status/${jobId}`)
+
+export const listInstagramAccounts = () =>
+  fetchApi('/accounts/instagram')
+
+export const addInstagramAccount = (body) =>
+  fetchApi('/accounts/instagram', { method: 'POST', body: JSON.stringify(body) })
+
+export const deleteInstagramAccount = (id) =>
+  fetchApi(`/accounts/instagram/${id}`, { method: 'DELETE' })
