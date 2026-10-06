@@ -1,4 +1,5 @@
 # src/ingestion/twitter_web.py
+import sys
 from typing import List, Dict, Any
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -9,24 +10,28 @@ import time
 def _build_driver():
     options = webdriver.ChromeOptions()
     options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1280,900")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+    return driver
 
 def _collect_tweets(driver, limit: int) -> List[Dict]:
     data: List[Dict] = []
 
-    # Faz scroll para carregar mais tweets
     last_height = driver.execute_script("return document.body.scrollHeight")
     while len(data) < limit:
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            break  # fim da página
-        last_height = new_height
-
         tweets = driver.find_elements(By.XPATH, '//article')
         for t in tweets[len(data):limit]:
             try:
@@ -74,8 +79,15 @@ def _collect_tweets(driver, limit: int) -> List[Dict]:
                 "permalink": permalink,
             })
 
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(3)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
     if not data:
-        print("[WARN] Nenhum tweet carregado!")
+        print("[WARN] Nenhum tweet carregado!", file=sys.stderr)
         with open("debug_twitter.html", "w", encoding="utf-8") as f:
             f.write(driver.page_source)
 
@@ -125,7 +137,7 @@ def scrape_twitter_many(body: dict, limit: int = 10) -> Dict[str, Any]:
     try:
         for username in profiles:
             url = f"https://twitter.com/{username}"
-            print(f"👤 Varrendo perfil @{username}")
+            print(f"👤 Varrendo perfil @{username}", file=sys.stderr)
             driver.get(url)
             time.sleep(5)
             data = _collect_tweets(driver, limit)
@@ -133,14 +145,14 @@ def scrape_twitter_many(body: dict, limit: int = 10) -> Dict[str, Any]:
 
         for tag in hashtags:
             url = f"https://twitter.com/hashtag/{tag}"
-            print(f"#️⃣ Varrendo hashtag #{tag}")
+            print(f"#️⃣ Varrendo hashtag #{tag}", file=sys.stderr)
             driver.get(url)
             time.sleep(5)
             data = _collect_tweets(driver, limit)
             hashtags_results.append({"id": tag, "data": data})
 
         for url in posts:
-            print(f"💬 Varrendo post {url}")
+            print(f"💬 Varrendo post {url}", file=sys.stderr)
             driver.get(url)
             time.sleep(5)
             data = _collect_tweets(driver, limit)
@@ -148,6 +160,6 @@ def scrape_twitter_many(body: dict, limit: int = 10) -> Dict[str, Any]:
 
     finally:
         driver.quit()
-        print(f"🧹 Sessão encerrada após {total_items} itens.")
+        print(f"🧹 Sessão encerrada após {total_items} itens.", file=sys.stderr)
         
     return { "sumary": {"total": total_items, "sucess": len(profiles_results + hashtags_results + posts_results)}, "profiles": profiles_results, "hashtags": hashtags_results, "posts": posts_results }

@@ -7,7 +7,12 @@ CLI do MVP: roda o pipeline completo para YouTube OU Reddit.
 """
 
 import argparse
+import json
 import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import List, Tuple
 
 from common.config import load_settings, get_env
@@ -32,7 +37,11 @@ def resolve_source(args) -> Tuple[str, str]:
         return "youtube", args.video_id
     if args.reddit_submission:
         return "reddit", args.reddit_submission
-    raise SystemExit("Informe --video-id (YouTube) ou --reddit-submission (Reddit).")
+    if getattr(args, "twitter_identifier", None):
+        return "twitter", args.twitter_identifier
+    if getattr(args, "instagram_identifier", None):
+        return "instagram", args.instagram_identifier
+    raise SystemExit("Informe --video-id, --reddit-submission, --twitter-identifier ou --instagram-identifier.")
 
 
 def _queries_from_vocab(keywords: List[str], examples: List[str], max_terms: int = 20) -> List[str]:
@@ -58,6 +67,30 @@ def _queries_from_vocab(keywords: List[str], examples: List[str], max_terms: int
         queries.append(" OR ".join(group))
     return queries
 
+
+
+def _run_chrome_scraper(payload: dict) -> list:
+    """Run Chrome-based scraping in a separate process to avoid macOS thread crashes."""
+    runner = str(Path(__file__).parent / "ingestion" / "chrome_runner.py")
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).parent)}
+    result = subprocess.run(
+        [sys.executable, runner],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=180,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Chrome scraper falhou (rc={result.returncode}):\n{result.stderr[-2000:]}")
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"Chrome scraper retornou JSON inválido: {exc}\n"
+            f"STDOUT: {result.stdout[:500]!r}\n"
+            f"STDERR: {result.stderr[-1000:]}"
+        ) from exc
 
 
 def run_pipeline(args) -> List[CommentRecord]:
@@ -116,13 +149,14 @@ def run_pipeline(args) -> List[CommentRecord]:
             logger.info("Coletando comentários do YouTube (video_id=%s)...", source_id)
             raw = fetch_comments(
                 video_id=source_id,
+                api_key=youtube_key,
                 page_size=getattr(args, "page_size", 50),
                 max_pages=getattr(args, "max_pages", 3),
             )
 
         elif platform == "reddit":
             try:
-                source_id = extract_submission_id(source_id)  
+                source_id = extract_submission_id(source_id)
             except ValueError as e:
                 raise SystemExit(f"[Reddit] {e}")
 
@@ -134,6 +168,74 @@ def run_pipeline(args) -> List[CommentRecord]:
                 only_root=getattr(args, "reddit_only_root", False),
             )
 
+        elif platform == "twitter":
+            import hashlib
+            mode = getattr(args, "twitter_mode", "post")
+            limit = getattr(args, "limit", 100)
+            logger.info("Coletando tweets do Twitter (mode=%s, query=%s)...", mode, source_id)
+            items = _run_chrome_scraper({
+                "platform": "twitter",
+                "mode": mode,
+                "id": source_id,
+                "limit": limit,
+            })
+            raw = []
+            for item in items:
+                permalink = item.get("permalink") or ""
+                parts = [p for p in permalink.rstrip("/").split("/") if p]
+                tweet_id = parts[-1] if parts and parts[-1].isdigit() else hashlib.md5(
+                    (item.get("author", "") + item.get("text", "")).encode()
+                ).hexdigest()[:12]
+                raw.append({
+                    "comment_id": tweet_id,
+                    "source_id": source_id,
+                    "author": item.get("author"),
+                    "text": item.get("text", ""),
+                    "likeCount": item.get("likeCount", 0),
+                    "publishedAt": item.get("publishedAt"),
+                    "permalink": permalink,
+                })
+
+        elif platform == "instagram":
+            import hashlib
+            account_id = getattr(args, "account_id", None)
+            if account_id:
+                from storage.supabase import get_instagram_credentials
+                creds = get_instagram_credentials(account_id)
+                ig_user = creds["username"]
+                ig_pass = creds["password"]
+            else:
+                ig_user = os.getenv("INSTAGRAM_USERNAME", "")
+                ig_pass = os.getenv("INSTAGRAM_PASSWORD", "")
+            if not ig_user or not ig_pass:
+                raise RuntimeError("Nenhuma conta Instagram disponível. Use account_id ou defina INSTAGRAM_USERNAME/PASSWORD no .env.")
+            mode = getattr(args, "instagram_mode", "post")
+            limit = getattr(args, "limit", 100)
+            logger.info("Coletando comentários do Instagram (mode=%s, id=%s)...", mode, source_id)
+            items = _run_chrome_scraper({
+                "platform": "instagram",
+                "username": ig_user,
+                "password": ig_pass,
+                "mode": mode,
+                "id": source_id,
+                "limit": limit,
+            })
+            raw = []
+            for item in items:
+                text = item.get("comment", "")
+                comment_id = hashlib.md5(
+                    (source_id + item.get("author", "") + text).encode()
+                ).hexdigest()[:16]
+                raw.append({
+                    "comment_id": comment_id,
+                    "source_id": source_id,
+                    "author": item.get("author"),
+                    "text": text,
+                    "likeCount": 0,
+                    "publishedAt": item.get("publishedAt"),
+                    "permalink": f"https://www.instagram.com/p/{source_id}/",
+                })
+
         else:
             raise SystemExit(f"Plataforma '{platform}' não suportada.")
 
@@ -142,7 +244,8 @@ def run_pipeline(args) -> List[CommentRecord]:
     results: List[CommentRecord] = []
     for item in raw:
         if platform in ("youtube",):
-            comment_id, payload = normalize_comment(item)
+            payload = normalize_comment(item)
+            comment_id = payload["comment_id"]
         else:
             comment_id = item["comment_id"]
             payload = item

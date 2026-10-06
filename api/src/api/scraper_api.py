@@ -4,6 +4,7 @@ from typing import Optional
 import pandas as pd
 
 # uvicorn src.api.scraper_api:app --reload
+# PYTHONPATH=src uvicorn api.app:app --reload --port 8000
 # http://127.0.0.1:8000/docs#/default/
 
 # importa funções dos scrapers
@@ -64,6 +65,7 @@ def twitter_web_much(body: dict = Body(...), limit: int = 10, save: bool = False
 def instagram_web_one(user: str, password: str, mode: str, id: str, limit: int = 10, save: bool = False):
     data = scrape_instagram_one(user, password, mode, id, limit)
     df = pd.DataFrame(data)
+    csv_path = None
     if save:
         csv_path = save_csv(df, platform="instagram", identifier=id, kind=mode)
     response = df_to_json(df)

@@ -2,6 +2,19 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
+class InstagramAccountIn(BaseModel):
+    username: str
+    password: str
+    label: Optional[str] = None
+
+
+class InstagramAccountOut(BaseModel):
+    id: str
+    username: str
+    label: Optional[str] = None
+    created_at: Optional[str] = None
+
+
 class CommentOut(BaseModel):
     id: str
     platform: str
@@ -23,7 +36,7 @@ class StatsOut(BaseModel):
 
 
 class ScrapeRequest(BaseModel):
-    source: Literal["youtube", "reddit", "reddit_auto"]
+    source: Literal["youtube", "reddit", "reddit_auto", "twitter", "instagram"]
     identifier: Optional[str] = None
     options: dict = {}
 

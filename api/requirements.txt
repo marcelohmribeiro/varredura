@@ -1,17 +1,26 @@
-google-api-python-client
-nltk
-spacy
-sentence-transformers
-pymongo
-requests
-pydantic>=2
 fastapi
 uvicorn
 python-dotenv
+pydantic>=2
+supabase
+requests
 PyYAML
+
+# NLP
+spacy
+nltk
+sentence-transformers
+https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl
+
+# Coleta de dados
+google-api-python-client
 praw>=7.7
 pandas
 snscrape
 youtube-comment-downloader
 selenium
 webdriver-manager
+undetected-chromedriver
+
+# Outros
+pymongo

@@ -18,6 +18,8 @@ def get_client() -> Client:
 
 def save_records(records: List) -> tuple[int, int]:
     """Upsert de CommentRecord completos (pipeline main.py --persist)."""
+    if not records:
+        return 0, 0
     client = get_client()
     rows = []
     for r in records:
@@ -45,8 +47,9 @@ def save_records(records: List) -> tuple[int, int]:
             "extras": doc.get("extras", {}),
         })
 
+    rows = list({r["id"]: r for r in rows}.values())
     client.table("comments").upsert(rows).execute()
-    return len(records), 0
+    return len(rows), 0
 
 
 def save_raw_comments(platform: str, identifier: str, df) -> int:
@@ -69,6 +72,27 @@ def save_raw_comments(platform: str, identifier: str, df) -> int:
     if rows:
         client.table("comments").upsert(rows).execute()
     return len(rows)
+
+
+def list_instagram_accounts() -> list:
+    return get_client().table("instagram_accounts").select("id,username,label,created_at").execute().data
+
+
+def add_instagram_account(username: str, password: str, label: str | None = None) -> dict:
+    return get_client().table("instagram_accounts").insert({
+        "username": username,
+        "password": password,
+        "label": label,
+    }).execute().data[0]
+
+
+def delete_instagram_account(account_id: str):
+    get_client().table("instagram_accounts").delete().eq("id", account_id).execute()
+
+
+def get_instagram_credentials(account_id: str) -> dict:
+    result = get_client().table("instagram_accounts").select("username,password").eq("id", account_id).single().execute()
+    return result.data
 
 
 def delete_older_than(days: int) -> int:

@@ -17,7 +17,7 @@ class SemanticEncoder:
         )
 
     def score(self, preprocessed_text: str) -> float:
-        if not preprocessed_text.strip():
+        if not preprocessed_text.strip() or len(self.examples) == 0:
             return 0.0
         emb = self.model.encode([preprocessed_text], convert_to_tensor=True, normalize_embeddings=True)
         cos = util.cos_sim(emb, self.examples_emb)  # shape [1, N]

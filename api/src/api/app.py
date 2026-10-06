@@ -1,12 +1,13 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "../../../.env"))
+load_dotenv(find_dotenv(usecwd=True))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers.comments import router as comments_router
 from api.routers.scrape import router as scrape_router
+from api.routers.accounts import router as accounts_router
 
 app = FastAPI(title="Alerta Segurança API", version="1.0.0")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 
 app.include_router(comments_router, prefix="/comments", tags=["comments"])
 app.include_router(scrape_router, prefix="/scrape", tags=["scrape"])
+app.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
 
 
 @app.get("/health")
